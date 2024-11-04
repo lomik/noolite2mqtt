@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lomik/nooLiteHub/pkg/mtrf"
+	"github.com/lomik/noolite2mqtt/pkg/mtrf"
 )
 
 type writeContext struct {

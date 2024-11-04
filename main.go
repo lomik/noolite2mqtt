@@ -4,8 +4,8 @@ import (
 	"flag"
 	"log"
 
-	"github.com/lomik/nooLiteHub/pkg/hub"
-	"github.com/lomik/nooLiteHub/pkg/mtrf"
+	"github.com/lomik/noolite2mqtt/pkg/hub"
+	"github.com/lomik/noolite2mqtt/pkg/mtrf"
 )
 
 func onMessage(topic string, payload []byte) {
@@ -15,8 +15,8 @@ func onMessage(topic string, payload []byte) {
 func main() {
 	port := flag.String("port", "/dev/ttyAMA0", "Serial port")
 	broker := flag.String("server", "127.0.0.1:1883", "MQTT broker")
-	topic := flag.String("topic", "nooLiteHub", "MQTT root topic")
-	mqttClientID := flag.String("client", "nooLiteHub", "MQTT client ID")
+	topic := flag.String("topic", "noolite2mqtt", "MQTT root topic")
+	mqttClientID := flag.String("client", "noolite2mqtt", "MQTT client ID")
 	mqttUser := flag.String("user", "", "MQTT user")
 	mqttPassword := flag.String("password", "", "MQTT password")
 

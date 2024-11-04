@@ -3,7 +3,7 @@ package hub
 import (
 	"fmt"
 
-	"github.com/lomik/nooLiteHub/pkg/mtrf"
+	"github.com/lomik/noolite2mqtt/pkg/mtrf"
 )
 
 var statePower = map[uint8]string{

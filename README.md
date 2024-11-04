@@ -1,14 +1,14 @@
-# nooLiteHub
+# noolite2mqtt
 MQTT gateway for MTRF-64 
 
 ## Топики
 
-Топики имеют префикс "nooLiteHub/". Его можно изменить через параметры запуска. 
+Топики имеют префикс "noolite2mqtt/". Его можно изменить через параметры запуска. 
 
 Все топики делятся на 3 группы: 
-* nooLiteHub/recv/# - сообщения, получаемые от модуля
-* nooLiteHub/sent/# - сообщения, отправленные модулю
-* nooLiteHub/write/# - команды приложению
+* noolite2mqtt/recv/# - сообщения, получаемые от модуля
+* noolite2mqtt/sent/# - сообщения, отправленные модулю
+* noolite2mqtt/write/# - команды приложению
 
 Обозначения, используемые в именах топиков:
 * ":ch" - номер канала, число от 0 до 63 включительно
@@ -94,22 +94,22 @@ recv/rx/:ch/device | PT111,PT112,unknown | Модель устройства
 1. Перевести силовой блок в режим привязки
 2. Послать сообщение
 ```
-mosquitto_pub -t nooLiteHub/write/txf/15/bind -m ""
+mosquitto_pub -t noolite2mqtt/write/txf/15/bind -m ""
 ```
 
 **Включить**
 ```
-mosquitto_pub -t nooLiteHub/write/txf/15/on -m ""
+mosquitto_pub -t noolite2mqtt/write/txf/15/on -m ""
 ```
 
 **Выключить**
 ```
-mosquitto_pub -t nooLiteHub/write/txf/15/off -m ""
+mosquitto_pub -t noolite2mqtt/write/txf/15/off -m ""
 ```
 
 **Переключить**
 ```
-mosquitto_pub -t nooLiteHub/write/txf/15/switch -m ""
+mosquitto_pub -t noolite2mqtt/write/txf/15/switch -m ""
 ```
 
 ### Пульт
@@ -117,6 +117,6 @@ mosquitto_pub -t nooLiteHub/write/txf/15/switch -m ""
 **Привязать**
 1. Перевести модуль в режим привязки, послав сообщение
 ```
-mosquitto_pub -t nooLiteHub/write/rx/15/bind -m ""
+mosquitto_pub -t noolite2mqtt/write/rx/15/bind -m ""
 ```
 2. Перевести переключатель в режим привязки и нажать кнопку, которую нужно привязать

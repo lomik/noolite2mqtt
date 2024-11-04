@@ -1,6 +1,6 @@
-module github.com/lomik/nooLiteHub
+module github.com/lomik/noolite2mqtt
 
-go 1.17
+go 1.23
 
 require (
 	github.com/huin/mqtt v0.0.0-20130822132849-c2d0e7ca9387

@@ -3,7 +3,7 @@ package hub
 import (
 	"testing"
 
-	"github.com/lomik/nooLiteHub/pkg/mtrf"
+	"github.com/lomik/noolite2mqtt/pkg/mtrf"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -7,8 +7,8 @@ import (
 	proto "github.com/huin/mqtt"
 	"github.com/jeffallen/mqtt"
 
-	"github.com/lomik/nooLiteHub/pkg/mtrf"
-	"github.com/lomik/nooLiteHub/pkg/router"
+	"github.com/lomik/noolite2mqtt/pkg/mtrf"
+	"github.com/lomik/noolite2mqtt/pkg/router"
 )
 
 // Options ...
