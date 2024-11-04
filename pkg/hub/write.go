@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"net"
 	"strconv"
 	"strings"
+	"time"
 
+	proto "github.com/huin/mqtt"
+	"github.com/jeffallen/mqtt"
 	"github.com/lomik/noolite2mqtt/pkg/mtrf"
 )
 
@@ -154,8 +158,41 @@ func (h *Hub) write(path string, callback func(ctx *writeContext)) {
 	})
 }
 
+func (h *Hub) mqttLoop() {
+	for {
+		err := h.mqttWorker()
+		log.Printf("mqtt worker failed: %s", err.Error())
+		time.Sleep(time.Second)
+	}
+}
+
 // ждет новые события из mqtt
-func (h *Hub) mqttWorker() {
+func (h *Hub) mqttWorker() error {
+	// подключиться к порту брокера
+	mqttConn, err := net.Dial("tcp", h.options.Broker)
+	if err != nil {
+		return err
+	}
+
+	cc := mqtt.NewClientConn(mqttConn)
+	cc.Dump = false
+	cc.ClientId = h.options.ClientID
+
+	tq := make([]proto.TopicQos, 1)
+	tq[0].Topic = h.options.Topic + "/write/#"
+	tq[0].Qos = proto.QosAtMostOnce
+
+	if err := cc.Connect(h.options.User, h.options.User); err != nil {
+		mqttConn.Close()
+		return err
+	}
+	log.Printf("connected to broker %s with client id %#v", h.options.Broker, cc.ClientId)
+	cc.Subscribe(tq)
+
+	h.Lock()
+	h.mqttClient = cc
+	h.Unlock()
+
 	for m := range h.mqttClient.Incoming {
 		b := new(bytes.Buffer)
 		m.Payload.WritePayload(b)
@@ -166,7 +203,9 @@ func (h *Hub) mqttWorker() {
 
 		ctx := &writeContext{payload: b.String()}
 		if err := h.writeRouter.Route(topicName, ctx); err != nil {
-			log.Println(err)
+			return err
 		}
 	}
+
+	return nil
 }
