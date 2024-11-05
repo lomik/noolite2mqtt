@@ -161,7 +161,11 @@ func (h *Hub) write(path string, callback func(ctx *writeContext)) {
 func (h *Hub) mqttLoop() {
 	for {
 		err := h.mqttWorker()
-		log.Printf("mqtt worker failed: %s", err.Error())
+		if err != nil {
+			log.Printf("mqtt worker failed: %s", err.Error())
+		} else {
+			log.Printf("mqtt loop exited without error")
+		}
 		time.Sleep(time.Second)
 	}
 }
