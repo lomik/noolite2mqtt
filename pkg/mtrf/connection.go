@@ -169,7 +169,10 @@ func (c *Connection) writer(conn io.ReadWriteCloser) {
 				return
 			}
 
-			c.recvEvent.Wait(time.Second)
+			if c.recvEvent.Wait(time.Second) {
+				// add extra timeout between messages
+				time.Sleep(200 * time.Millisecond)
+			}
 		}
 	}
 }
