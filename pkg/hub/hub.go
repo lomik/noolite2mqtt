@@ -20,6 +20,11 @@ type Options struct {
 	Password string // MQTT password
 }
 
+type writeEvent struct {
+	topicName string
+	ctx       writeContext
+}
+
 // Hub ...
 type Hub struct {
 	sync.RWMutex
@@ -27,6 +32,7 @@ type Hub struct {
 	mqttClient  *mqtt.ClientConn
 	device      *mtrf.Connection
 	writeRouter *router.Router
+	writeChan   chan writeEvent
 }
 
 // New создает инстанс Hub и подключается к брокеру
@@ -36,6 +42,7 @@ func New(device *mtrf.Connection, options Options) (*Hub, error) {
 		options:     options,
 		device:      device,
 		writeRouter: router.New(),
+		writeChan:   make(chan writeEvent, 100),
 	}
 
 	// register routes
@@ -43,6 +50,7 @@ func New(device *mtrf.Connection, options Options) (*Hub, error) {
 
 	go h.mqttLoop()
 	go h.deviceWorker()
+	go h.writeWorker()
 
 	return h, nil
 }

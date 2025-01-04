@@ -205,11 +205,20 @@ func (h *Hub) mqttWorker() error {
 		topicName := m.TopicName
 		topicName = strings.TrimPrefix(topicName, h.options.Topic+"/write/")
 
-		ctx := &writeContext{payload: b.String()}
-		if err := h.writeRouter.Route(topicName, ctx); err != nil {
-			return err
+		h.writeChan <- writeEvent{
+			topicName: topicName,
+			ctx:       writeContext{payload: b.String()},
 		}
 	}
 
 	return nil
+}
+
+func (h *Hub) writeWorker() {
+	for {
+		w := <-h.writeChan
+		if err := h.writeRouter.Route(w.topicName, &w.ctx); err != nil {
+			log.Println("error", err.Error())
+		}
+	}
 }
