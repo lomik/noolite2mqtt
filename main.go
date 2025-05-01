@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"time"
 
 	"github.com/lomik/noolite2mqtt/pkg/hub"
 	"github.com/lomik/noolite2mqtt/pkg/mtrf"
@@ -19,6 +20,7 @@ func main() {
 	mqttClientID := flag.String("client", "noolite2mqtt", "MQTT client ID")
 	mqttUser := flag.String("user", "", "MQTT user")
 	mqttPassword := flag.String("password", "", "MQTT password")
+	watchdog := flag.Duration("watchdog", 0, "Watchdog check interval and timeout")
 
 	flag.Parse()
 
@@ -35,6 +37,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 		return
+	}
+
+	if *watchdog > 0 {
+		go func() {
+			for {
+				time.Sleep(*watchdog)
+				if h.LastRecv().Add(*watchdog).Before(time.Now()) {
+					log.Fatal("watchdog")
+				}
+			}
+
+		}()
 	}
 
 	h.Loop()

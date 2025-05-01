@@ -3,6 +3,8 @@ package hub
 import (
 	"log"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	proto "github.com/huin/mqtt"
 	"github.com/jeffallen/mqtt"
@@ -28,6 +30,7 @@ type writeEvent struct {
 // Hub ...
 type Hub struct {
 	sync.RWMutex
+	lastRecv    atomic.Int64
 	options     Options
 	mqttClient  *mqtt.ClientConn
 	device      *mtrf.Connection
@@ -76,6 +79,7 @@ func (h *Hub) Publish(topic string, payload string) {
 func (h *Hub) deviceWorker() {
 	for {
 		r := <-h.device.Recv()
+		h.lastRecv.Store(time.Now().Unix())
 		h.Publish("recv/raw", r.JSON())
 		for k, v := range expandResponse(r) {
 			h.Publish("recv/"+k, v)
@@ -95,4 +99,8 @@ func (h *Hub) sendRequest(r *mtrf.Request) {
 // Loop ... . @TODO: выходить когда порвалась связь с брокером или модулем
 func (h *Hub) Loop() error {
 	select {}
+}
+
+func (h *Hub) LastRecv() time.Time {
+	return time.Unix(h.lastRecv.Load(), 0)
 }
