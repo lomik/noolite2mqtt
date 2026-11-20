@@ -58,26 +58,62 @@ func formatTemperature(d0, d1 uint8) string {
 	return fmt.Sprintf("%s%d.%d", sign, t/10, t%10)
 }
 
+// responsePrefix возвращает начало топика для ответа модуля:
+// режим, канал и (для nooLite-F) адрес устройства.
+// Для остальных режимов (сервисный, обновление ПО) возвращает ""
+func responsePrefix(r *mtrf.Response) string {
+	switch r.Mode {
+	case mtrf.ModeTX:
+		return fmt.Sprintf("tx/%d", r.Ch)
+	case mtrf.ModeRX:
+		return fmt.Sprintf("rx/%d", r.Ch)
+	case mtrf.ModeTXF:
+		return fmt.Sprintf("txf/%d/%s", r.Ch, r.Device())
+	case mtrf.ModeRXF:
+		return fmt.Sprintf("rxf/%d/%s", r.Ch, r.Device())
+	default:
+		return ""
+	}
+}
+
+// responseError возвращает ошибку, если модуль сообщил о неудачном
+// выполнении команды (код ответа в поле Ctr)
+func responseError(r *mtrf.Response) error {
+	where := responsePrefix(r)
+	if where == "" {
+		where = fmt.Sprintf("mode %d ch %d", r.Mode, r.Ch)
+	}
+
+	switch r.Ctr {
+	case mtrf.RespNoResponse:
+		return fmt.Errorf("%s: no response from block", where)
+	case mtrf.RespError:
+		return fmt.Errorf("%s: error during execution", where)
+	}
+	return nil
+}
+
 func expandResponse(r *mtrf.Response) (topicPayload map[string]string) {
 	topicPayload = make(map[string]string)
 
-	if r.Ctr != 0 {
+	prefix := responsePrefix(r)
+	if prefix == "" {
 		return
 	}
 
 	set := func(topic string, value interface{}) {
-		if r.Mode == mtrf.ModeTXF {
-			topicPayload[fmt.Sprintf("txf/%d/%s/%s", r.Ch, r.Device(), topic)] = toString(value)
-		}
-		if r.Mode == mtrf.ModeTX {
-			topicPayload[fmt.Sprintf("tx/%d/%s", r.Ch, topic)] = toString(value)
-		}
-		if r.Mode == mtrf.ModeRXF {
-			topicPayload[fmt.Sprintf("rxf/%d/%s/%s", r.Ch, r.Device(), topic)] = toString(value)
-		}
-		if r.Mode == mtrf.ModeRX {
-			topicPayload[fmt.Sprintf("rx/%d/%s", r.Ch, topic)] = toString(value)
-		}
+		topicPayload[prefix+"/"+topic] = toString(value)
+	}
+
+	switch r.Ctr {
+	case mtrf.RespDone:
+		// разбираем команду ниже
+	case mtrf.RespBindDone:
+		set("bind", "done")
+		return
+	default:
+		// ошибки обрабатываются в responseError
+		return
 	}
 
 	switch r.Cmd {

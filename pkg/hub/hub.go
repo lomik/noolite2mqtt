@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -80,6 +81,9 @@ func (h *Hub) deviceWorker() {
 			continue
 		}
 		h.Publish("recv/raw", r.JSON())
+		if err := responseError(r); err != nil {
+			h.onError(err)
+		}
 		for k, v := range expandResponse(r) {
 			h.Publish("recv/"+k, v)
 		}
@@ -90,9 +94,17 @@ func (h *Hub) onError(err error) {
 	h.Publish("error", err.Error())
 }
 
+// sendRequest ставит запрос в очередь отправки модулю.
+// Не блокируется: если очередь переполнена (модуль недоступен или не
+// успевает), запрос отбрасывается с ошибкой. Иначе встал бы writeWorker,
+// а следом и прием всех команд из MQTT
 func (h *Hub) sendRequest(r *mtrf.Request) {
-	h.device.Send() <- r
-	h.Publish("sent/raw", r.JSON())
+	select {
+	case h.device.Send() <- r:
+		h.Publish("sent/raw", r.JSON())
+	default:
+		h.onError(fmt.Errorf("device send queue is full, dropped request %s", r.JSON()))
+	}
 }
 
 // Loop ... . @TODO: выходить когда порвалась связь с брокером или модулем

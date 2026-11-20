@@ -41,6 +41,18 @@ const (
 	CtrSendF = 8
 )
 
+// Коды ответа модуля (поле Ctr в Response)
+const (
+	// RespDone - Команда выполнена
+	RespDone uint8 = 0
+	// RespNoResponse - Нет ответа от блока
+	RespNoResponse = 1
+	// RespError - Ошибка во время выполнения
+	RespError = 2
+	// RespBindDone - Привязка выполнена
+	RespBindDone = 3
+)
+
 const (
 	// CmdOff - Выключить нагрузку
 	CmdOff uint8 = 0

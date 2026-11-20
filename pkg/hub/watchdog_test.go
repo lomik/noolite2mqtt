@@ -109,3 +109,34 @@ func TestWatchdogDeadModule(t *testing.T) {
 		t.Fatal("watchdog did not fire for dead module")
 	}
 }
+
+// Модуль недоступен: очередь отправки заполнена. sendRequest не должен
+// блокироваться, иначе встанет обработка всех команд из MQTT
+func TestSendRequestDoesNotBlock(t *testing.T) {
+	// модуль, к которому невозможно подключиться: writer не запущен
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := ln.Addr().String()
+	ln.Close()
+
+	h := newTestHub(t, Options{Broker: addr})
+	h.device = mtrf.Connect(addr)
+	t.Cleanup(h.device.Close)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		// больше емкости очереди отправки
+		for i := 0; i < 200; i++ {
+			h.sendRequest(&mtrf.Request{Mode: mtrf.ModeTX, Ch: 1, Cmd: mtrf.CmdOn})
+		}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("sendRequest blocked on full device queue")
+	}
+}

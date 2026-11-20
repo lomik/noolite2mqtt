@@ -61,3 +61,32 @@ func TestFormatTemperature(t *testing.T) {
 		assert.Equal(c.expected, formatTemperature(c.d0, c.d1), "D0=%#x D1=%#x", c.d0, c.d1)
 	}
 }
+
+func TestResponseCodes(t *testing.T) {
+	assert := assert.New(t)
+
+	// привязка выполнена
+	r := &mtrf.Response{Mode: mtrf.ModeTXF, Ctr: mtrf.RespBindDone, Ch: 7, ID2: 0xCB, ID3: 0xB6}
+	assert.Equal(map[string]string{"txf/7/0000CBB6/bind": "done"}, expandResponse(r))
+	assert.NoError(responseError(r))
+
+	r = &mtrf.Response{Mode: mtrf.ModeRX, Ctr: mtrf.RespBindDone, Ch: 44}
+	assert.Equal(map[string]string{"rx/44/bind": "done"}, expandResponse(r))
+
+	// нет ответа от блока: топиков нет, есть ошибка
+	r = &mtrf.Response{Mode: mtrf.ModeTXF, Ctr: mtrf.RespNoResponse, Ch: 7, Cmd: mtrf.CmdSendState}
+	assert.Empty(expandResponse(r))
+	assert.EqualError(responseError(r), "txf/7/00000000: no response from block")
+
+	r = &mtrf.Response{Mode: mtrf.ModeTX, Ctr: mtrf.RespError, Ch: 3}
+	assert.Empty(expandResponse(r))
+	assert.EqualError(responseError(r), "tx/3: error during execution")
+
+	r = &mtrf.Response{Mode: mtrf.ModeService, Ctr: mtrf.RespError}
+	assert.EqualError(responseError(r), "mode 4 ch 0: error during execution")
+
+	// ответ сервисного режима не разворачивается в топики
+	r = &mtrf.Response{Mode: mtrf.ModeService, ID1: 1, ID2: 103, ID3: 170}
+	assert.Empty(expandResponse(r))
+	assert.NoError(responseError(r))
+}
