@@ -128,7 +128,7 @@ func (c *Connection) worker() {
 		go func() {
 			defer wg.Done()
 			log.Println("writer started")
-			c.writer(conn)
+			c.writer(conn, abortChan)
 			abort()
 		}()
 
@@ -153,10 +153,15 @@ func (c *Connection) worker() {
 	}
 }
 
-func (c *Connection) writer(conn io.ReadWriteCloser) {
+// writer отправляет запросы из очереди в модуль.
+// Завершается при выходе, ошибке записи или при обрыве соединения,
+// обнаруженном reader'ом (закрытие abort).
+func (c *Connection) writer(conn io.ReadWriteCloser, abort <-chan struct{}) {
 	for {
 		select {
 		case <-c.exit:
+			return
+		case <-abort:
 			return
 		case m := <-c.sendQueue:
 			body := m.Bytes()
