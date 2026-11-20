@@ -63,8 +63,13 @@ func (r *Router) AddParam(name string, parser func(value string, ctx interface{}
 }
 
 func (r *Router) lookup(root *entry, path []string) (*entry, map[string]string) {
-	// is leaf
+	// is leaf. Узел без callback - промежуточный (например, "tx" для
+	// "tx/:ch/on"), совпадением он не считается, чтобы поиск мог
+	// продолжиться по другим веткам
 	if len(path) == 0 {
+		if root.callback == nil {
+			return nil, nil
+		}
 		return root, make(map[string]string)
 	}
 
