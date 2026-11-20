@@ -63,3 +63,10 @@ func TestRequestConcurrentSerialization(t *testing.T) {
 	}
 	<-done
 }
+
+func TestServiceRequest(t *testing.T) {
+	assert.Equal(t,
+		[]byte{171, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 175, 172},
+		ServiceRequest().Bytes(),
+	)
+}

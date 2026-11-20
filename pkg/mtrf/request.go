@@ -49,6 +49,15 @@ func (r *Request) Bytes() []byte {
 	return b
 }
 
+// ServiceRequest возвращает запрос сервисного режима: MODE=4, остальные поля 0.
+// Модуль отвечает на него сам, без передачи в эфир, пакетом с MODE=4 и своим
+// адресом nooLite-F в ID0..ID3. Сразу после подачи питания запрос переводит
+// модуль из режима обновления ПО в основной режим.
+// Используется для проверки связи с модулем
+func ServiceRequest() *Request {
+	return &Request{Mode: ModeService}
+}
+
 func makeRequest(p []uint8) *Request {
 	return &Request{
 		St:   p[0],

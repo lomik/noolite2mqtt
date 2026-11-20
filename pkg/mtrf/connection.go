@@ -157,6 +157,14 @@ func (c *Connection) worker() {
 // Завершается при выходе, ошибке записи или при обрыве соединения,
 // обнаруженном reader'ом (закрытие abort).
 func (c *Connection) writer(conn io.ReadWriteCloser, abort <-chan struct{}) {
+	// После подачи питания модуль 12 секунд находится в режиме обновления ПО
+	// и не принимает команды. Запрос сервисного режима сразу переводит его
+	// в основной режим. В основном режиме запрос безопасен: модуль просто
+	// отвечает своим адресом
+	if !c.write(conn, ServiceRequest()) {
+		return
+	}
+
 	for {
 		select {
 		case <-c.exit:
@@ -164,22 +172,29 @@ func (c *Connection) writer(conn io.ReadWriteCloser, abort <-chan struct{}) {
 		case <-abort:
 			return
 		case m := <-c.sendQueue:
-			body := m.Bytes()
-
-			// log.Printf("send msg: %s\n", m.String())
-			c.recvEvent.Clear()
-
-			if _, err := conn.Write(body); err != nil {
-				log.Println(err)
+			if !c.write(conn, m) {
 				return
-			}
-
-			if c.recvEvent.Wait(time.Second) {
-				// add extra timeout between messages
-				time.Sleep(200 * time.Millisecond)
 			}
 		}
 	}
+}
+
+// write отправляет запрос и ждет ответа модуля (не дольше секунды).
+// Возвращает false при ошибке записи
+func (c *Connection) write(conn io.ReadWriteCloser, m *Request) bool {
+	// log.Printf("send msg: %s\n", m.String())
+	c.recvEvent.Clear()
+
+	if _, err := conn.Write(m.Bytes()); err != nil {
+		log.Println(err)
+		return false
+	}
+
+	if c.recvEvent.Wait(time.Second) {
+		// add extra timeout between messages
+		time.Sleep(200 * time.Millisecond)
+	}
+	return true
 }
 
 func (c *Connection) reader(conn io.ReadWriteCloser) {

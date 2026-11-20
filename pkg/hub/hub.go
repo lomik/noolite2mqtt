@@ -36,7 +36,8 @@ type writeEvent struct {
 
 // Hub ...
 type Hub struct {
-	lastRecv    atomic.Int64
+	lastRecv    atomic.Int64 // время последнего ответа модуля, UnixNano
+	probes      atomic.Int32 // количество отправленных проб, ответ на которые еще не пришел
 	options     Options
 	mqttClient  mqtt.Client
 	device      *mtrf.Connection
@@ -53,6 +54,8 @@ func New(device *mtrf.Connection, options Options) (*Hub, error) {
 		writeRouter: router.New(),
 		writeChan:   make(chan writeEvent, 100),
 	}
+	// отсчет для watchdog ведется от момента запуска
+	h.lastRecv.Store(time.Now().UnixNano())
 
 	// register routes
 	h.init()
@@ -71,7 +74,11 @@ func New(device *mtrf.Connection, options Options) (*Hub, error) {
 func (h *Hub) deviceWorker() {
 	for {
 		r := <-h.device.Recv()
-		h.lastRecv.Store(time.Now().Unix())
+		h.lastRecv.Store(time.Now().UnixNano())
+		if r.Mode == mtrf.ModeService && h.takeProbe() {
+			// ответ на пробу watchdog, в MQTT не публикуем
+			continue
+		}
 		h.Publish("recv/raw", r.JSON())
 		for k, v := range expandResponse(r) {
 			h.Publish("recv/"+k, v)
@@ -94,5 +101,5 @@ func (h *Hub) Loop() error {
 }
 
 func (h *Hub) LastRecv() time.Time {
-	return time.Unix(h.lastRecv.Load(), 0)
+	return time.Unix(0, h.lastRecv.Load())
 }

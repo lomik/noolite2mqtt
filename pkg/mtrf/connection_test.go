@@ -1,6 +1,8 @@
 package mtrf
 
 import (
+	"bytes"
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -45,4 +47,32 @@ func TestReconnectWithoutSend(t *testing.T) {
 	// ожидаем переподключения без единой отправленной команды
 	second := waitConn()
 	second.Close()
+}
+
+// Сразу после подключения модулю должен уйти запрос сервисного режима,
+// который выводит модуль из режима обновления ПО после подачи питания
+func TestServiceRequestOnConnect(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+
+	c := Connect(ln.Addr().String())
+	defer c.Close()
+
+	conn, err := ln.Accept()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	buf := make([]byte, MessageLen)
+	if _, err := io.ReadFull(conn, buf); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(ServiceRequest().Bytes(), buf) {
+		t.Fatalf("first packet %v, expected service request %v", buf, ServiceRequest().Bytes())
+	}
 }
