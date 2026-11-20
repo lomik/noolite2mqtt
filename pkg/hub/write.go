@@ -1,16 +1,10 @@
 package hub
 
 import (
-	"bytes"
 	"fmt"
 	"log"
-	"net"
 	"strconv"
-	"strings"
-	"time"
 
-	proto "github.com/huin/mqtt"
-	"github.com/jeffallen/mqtt"
 	"github.com/lomik/noolite2mqtt/pkg/mtrf"
 )
 
@@ -156,72 +150,6 @@ func (h *Hub) write(path string, callback func(ctx *writeContext)) {
 	h.writeRouter.AddPath(path, func(ctx interface{}) {
 		callback(ctx.(*writeContext))
 	})
-}
-
-func (h *Hub) mqttLoop() {
-	for {
-		err := h.mqttWorker()
-		if err != nil {
-			log.Printf("mqtt worker failed: %s", err.Error())
-		} else {
-			log.Printf("mqtt loop exited without error")
-		}
-		time.Sleep(time.Second)
-	}
-}
-
-// ждет новые события из mqtt
-func (h *Hub) mqttWorker() error {
-	// подключиться к порту брокера
-	mqttConn, err := net.Dial("tcp", h.options.Broker)
-	if err != nil {
-		return err
-	}
-
-	cc := mqtt.NewClientConn(mqttConn)
-	cc.Dump = false
-	cc.ClientId = h.options.ClientID
-
-	tq := make([]proto.TopicQos, 1)
-	tq[0].Topic = h.options.Topic + "/write/#"
-	tq[0].Qos = proto.QosAtMostOnce
-
-	if err := cc.Connect(h.options.User, h.options.Password); err != nil {
-		mqttConn.Close()
-		return err
-	}
-	log.Printf("connected to broker %s with client id %#v", h.options.Broker, cc.ClientId)
-	cc.Subscribe(tq)
-
-	h.Lock()
-	h.mqttClient = cc
-	h.Unlock()
-
-	// Incoming закрывается библиотекой при обрыве соединения.
-	// После этого клиент больше нельзя использовать для отправки
-	defer func() {
-		h.Lock()
-		if h.mqttClient == cc {
-			h.mqttClient = nil
-		}
-		h.Unlock()
-	}()
-
-	for m := range cc.Incoming {
-		b := new(bytes.Buffer)
-		m.Payload.WritePayload(b)
-		log.Printf("[mqtt] -> %s: %s", m.TopicName, b.String())
-
-		topicName := m.TopicName
-		topicName = strings.TrimPrefix(topicName, h.options.Topic+"/write/")
-
-		h.writeChan <- writeEvent{
-			topicName: topicName,
-			ctx:       writeContext{payload: b.String()},
-		}
-	}
-
-	return nil
 }
 
 func (h *Hub) writeWorker() {

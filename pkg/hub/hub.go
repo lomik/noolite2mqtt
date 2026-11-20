@@ -1,14 +1,10 @@
 package hub
 
 import (
-	"fmt"
-	"log"
-	"sync"
 	"sync/atomic"
 	"time"
 
-	proto "github.com/huin/mqtt"
-	"github.com/jeffallen/mqtt"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 
 	"github.com/lomik/noolite2mqtt/pkg/mtrf"
 	"github.com/lomik/noolite2mqtt/pkg/router"
@@ -21,6 +17,16 @@ type Options struct {
 	ClientID string // MQTT client ID
 	User     string // MQTT user
 	Password string // MQTT password
+
+	// Таймаут установки соединения с брокером (TCP + CONNECT/CONNACK).
+	// 0 - значение по умолчанию
+	ConnectTimeout time.Duration
+	// Интервал MQTT keepalive (PINGREQ). Должен быть не меньше секунды.
+	// 0 - значение по умолчанию
+	KeepAlive time.Duration
+	// Сколько ждать PINGRESP, прежде чем считать соединение потерянным.
+	// 0 - значение по умолчанию
+	PingTimeout time.Duration
 }
 
 type writeEvent struct {
@@ -30,10 +36,9 @@ type writeEvent struct {
 
 // Hub ...
 type Hub struct {
-	sync.RWMutex
 	lastRecv    atomic.Int64
 	options     Options
-	mqttClient  *mqtt.ClientConn
+	mqttClient  mqtt.Client
 	device      *mtrf.Connection
 	writeRouter *router.Router
 	writeChan   chan writeEvent
@@ -52,49 +57,15 @@ func New(device *mtrf.Connection, options Options) (*Hub, error) {
 	// register routes
 	h.init()
 
-	go h.mqttLoop()
+	h.mqttClient = h.newMQTTClient()
+	// с ConnectRetry первая попытка и все повторы идут в фоне,
+	// поэтому ждать токен не нужно
+	h.mqttClient.Connect()
+
 	go h.deviceWorker()
 	go h.writeWorker()
 
 	return h, nil
-}
-
-// Publish отправляет сообщение брокеру.
-// Если соединения с брокером нет, сообщение отбрасывается.
-func (h *Hub) Publish(topic string, payload string) {
-	// ClientConn не потокобезопасен, поэтому все обращения к нему
-	// сериализуются под эксклюзивной блокировкой
-	h.Lock()
-	defer h.Unlock()
-
-	if h.mqttClient == nil {
-		return
-	}
-
-	log.Printf("[mqtt] <- %s: %s", h.options.Topic+"/"+topic, payload)
-	err := safePublish(h.mqttClient, &proto.Publish{
-		Header:    proto.Header{},
-		TopicName: h.options.Topic + "/" + topic,
-		Payload:   proto.BytesPayload([]byte(payload)),
-	})
-	if err != nil {
-		log.Printf("[mqtt] publish failed, connection is dead: %s", err.Error())
-		h.mqttClient = nil
-	}
-}
-
-// safePublish вызывает mc.Publish и перехватывает панику.
-// При обрыве соединения библиотека закрывает внутренний канал отправки,
-// и Publish паникует с "send on closed channel". Узнать о закрытии канала
-// заранее нельзя, поэтому единственный надежный способ - recover.
-func safePublish(mc *mqtt.ClientConn, m *proto.Publish) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("%v", r)
-		}
-	}()
-	mc.Publish(m)
-	return nil
 }
 
 func (h *Hub) deviceWorker() {
