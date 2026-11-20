@@ -197,7 +197,17 @@ func (h *Hub) mqttWorker() error {
 	h.mqttClient = cc
 	h.Unlock()
 
-	for m := range h.mqttClient.Incoming {
+	// Incoming закрывается библиотекой при обрыве соединения.
+	// После этого клиент больше нельзя использовать для отправки
+	defer func() {
+		h.Lock()
+		if h.mqttClient == cc {
+			h.mqttClient = nil
+		}
+		h.Unlock()
+	}()
+
+	for m := range cc.Incoming {
 		b := new(bytes.Buffer)
 		m.Payload.WritePayload(b)
 		log.Printf("[mqtt] -> %s: %s", m.TopicName, b.String())

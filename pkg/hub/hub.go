@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"fmt"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -58,22 +59,42 @@ func New(device *mtrf.Connection, options Options) (*Hub, error) {
 	return h, nil
 }
 
-// Publish отправляет сообщение брокеру
+// Publish отправляет сообщение брокеру.
+// Если соединения с брокером нет, сообщение отбрасывается.
 func (h *Hub) Publish(topic string, payload string) {
-	h.RLock()
-	mc := h.mqttClient
-	h.RUnlock()
+	// ClientConn не потокобезопасен, поэтому все обращения к нему
+	// сериализуются под эксклюзивной блокировкой
+	h.Lock()
+	defer h.Unlock()
 
-	if mc == nil {
+	if h.mqttClient == nil {
 		return
 	}
 
 	log.Printf("[mqtt] <- %s: %s", h.options.Topic+"/"+topic, payload)
-	mc.Publish(&proto.Publish{
+	err := safePublish(h.mqttClient, &proto.Publish{
 		Header:    proto.Header{},
 		TopicName: h.options.Topic + "/" + topic,
 		Payload:   proto.BytesPayload([]byte(payload)),
 	})
+	if err != nil {
+		log.Printf("[mqtt] publish failed, connection is dead: %s", err.Error())
+		h.mqttClient = nil
+	}
+}
+
+// safePublish вызывает mc.Publish и перехватывает панику.
+// При обрыве соединения библиотека закрывает внутренний канал отправки,
+// и Publish паникует с "send on closed channel". Узнать о закрытии канала
+// заранее нельзя, поэтому единственный надежный способ - recover.
+func safePublish(mc *mqtt.ClientConn, m *proto.Publish) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+	mc.Publish(m)
+	return nil
 }
 
 func (h *Hub) deviceWorker() {
