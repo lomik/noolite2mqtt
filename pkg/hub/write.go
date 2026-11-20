@@ -186,7 +186,7 @@ func (h *Hub) mqttWorker() error {
 	tq[0].Topic = h.options.Topic + "/write/#"
 	tq[0].Qos = proto.QosAtMostOnce
 
-	if err := cc.Connect(h.options.User, h.options.User); err != nil {
+	if err := cc.Connect(h.options.User, h.options.Password); err != nil {
 		mqttConn.Close()
 		return err
 	}
