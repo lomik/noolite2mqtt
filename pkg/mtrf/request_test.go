@@ -29,3 +29,37 @@ func TestJsonRequest(t *testing.T) {
 		}()
 	}
 }
+
+func TestRequestSerializationDoesNotMutate(t *testing.T) {
+	assert := assert.New(t)
+
+	r := &Request{Mode: ModeTXF, Ch: 11, Cmd: CmdOff}
+	orig := *r
+
+	assert.Equal("[171,2,0,0,11,0,0,0,0,0,0,0,0,0,0,184,172]", r.JSON())
+	assert.Contains(r.String(), "St: 171")
+	assert.Contains(r.String(), "Crc: 184")
+	assert.Equal([]byte{171, 2, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 184, 172}, r.Bytes())
+
+	// сериализация не должна менять сам Request
+	assert.Equal(orig, *r)
+}
+
+// Request отправляется в модуль и одновременно логируется в MQTT.
+// Под -race этот тест ловит гонку, если сериализация пишет в поля
+func TestRequestConcurrentSerialization(t *testing.T) {
+	r := &Request{Mode: ModeTXF, Ch: 11, Cmd: CmdOn}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 1000; i++ {
+			r.Bytes()
+		}
+	}()
+	for i := 0; i < 1000; i++ {
+		_ = r.JSON()
+		_ = r.String()
+	}
+	<-done
+}
