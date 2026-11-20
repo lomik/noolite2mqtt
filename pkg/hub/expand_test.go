@@ -17,16 +17,16 @@ func TestExpandResponse(t *testing.T) {
 			"txf/7/0000CBB6/state/power":      "on",
 		},
 		"[173,1,0,16,42,21,7,205,32,48,255,0,0,0,0,32,174]": {
-			"rx/42/sensor/temperature": "20.5",
-			"rx/42/sensor/humidity":    "48",
-			"rx/42/sensor/low_battery": "false",
-			"rx/42/sensor/device":      "PT111",
+			"rx/42/temperature": "20.5",
+			"rx/42/humidity":    "48",
+			"rx/42/low_battery": "false",
+			"rx/42/device":      "PT111",
 		},
 		"[173,1,0,7,44,0,0,0,0,0,0,0,0,0,0,225,174]": {
-			"rx/44/off": "",
+			"rx/44/power": "off",
 		},
 		"[173,1,0,8,44,2,0,0,0,0,0,0,0,0,0,228,174]": {
-			"rx/44/on": "",
+			"rx/44/power": "on",
 		},
 	}
 

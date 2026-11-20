@@ -49,8 +49,8 @@ write/txf/:ch/state |  | Запросить текущее состояние б
 write/txf/:ch/state0 |  | То же самое что write/txf/:ch/state
 write/txf/:ch/state1 |  | Запросить текущее состояние (дополнительный вход, прием обычного nooLite)
 write/txf/:ch/state2 |  | Запросить текущее состояние (количество свободных ячеек для привязки)
-recv/txf/:ch/:device/state/power | off,on | Блок включен/выключен
-recv/txf/:ch/:device/state/bind | false,true | Включен режим привязки
+recv/txf/:ch/:device/state/power | off,on,temporary_on | Блок включен/выключен/временно включен
+recv/txf/:ch/:device/state/bind | off,on | Включен режим привязки
 recv/txf/:ch/:device/state/brightness | 0..255 | Яркость
 recv/txf/:ch/:device/state/input | off,on | Состояние дополнительного входа блока (off - разомкнут, on - замкнут)
 recv/txf/:ch/:device/state/noolite_disabled_temporary | false,true | Прием nooLite временно запрещен (до перезапуска блока)
@@ -64,8 +64,7 @@ recv/txf/:ch/:device/state/free_slots_noolite_f | 0..32 | Количество �
 Топик | Сообщение | Описание
 ------------ | ------------- | ------
 write/rx/:ch/bind |  | Привязать выключатель
-recv/rx/:ch/on | | Выключить нагрузку
-recv/rx/:ch/off | | Включить нагрузку
+recv/rx/:ch/power | on,off | Включить/выключить нагрузку
 recv/rx/:ch/switch | | Включить или выключить нагрузку
 recv/rx/:ch/load_preset | | Загрузить сценарий
 recv/rx/:ch/save_preset | | Сохранить сценарий
