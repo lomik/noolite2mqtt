@@ -40,6 +40,24 @@ func toString(i interface{}) string {
 	}
 }
 
+// formatTemperature декодирует температуру датчика из D0 и D1.
+// Температура - 12-битное число со знаком (дополнительный код) в десятых
+// долях градуса: D0 - младшие 8 бит, биты 3..0 байта D1 - старшие 4 бита.
+// Остальные биты D1 (тип датчика и разряд батареи) игнорируются
+func formatTemperature(d0, d1 uint8) string {
+	t := int(d0) | int(d1&0x0f)<<8
+	if t&0x800 != 0 { // знаковый бит
+		t -= 0x1000
+	}
+
+	sign := ""
+	if t < 0 {
+		sign = "-"
+		t = -t
+	}
+	return fmt.Sprintf("%s%d.%d", sign, t/10, t%10)
+}
+
 func expandResponse(r *mtrf.Response) (topicPayload map[string]string) {
 	topicPayload = make(map[string]string)
 
@@ -92,12 +110,11 @@ func expandResponse(r *mtrf.Response) (topicPayload map[string]string) {
 	case mtrf.CmdStopReg:
 		set("stop_reg", "")
 	case mtrf.CmdSensTempHumi:
-		t := int(r.D0) + (int(r.D1&0xf) << 8)
 		d := sensorDevice[(r.D1&0x70)>>4]
 		if d == "" {
 			d = "unknown"
 		}
-		set("temperature", fmt.Sprintf("%d.%d", t/10, t%10))
+		set("temperature", formatTemperature(r.D0, r.D1))
 		set("humidity", r.D2)
 		set("low_battery", stateBoolean[r.D1>>7])
 		set("device", d)

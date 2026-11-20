@@ -36,3 +36,28 @@ func TestExpandResponse(t *testing.T) {
 		assert.Equal(expected, expandResponse(response))
 	}
 }
+
+func TestFormatTemperature(t *testing.T) {
+	assert := assert.New(t)
+
+	table := []struct {
+		d0, d1   uint8
+		expected string
+	}{
+		{0x00, 0x00, "0.0"},
+		{205, 0x00, "20.5"},    // 205
+		{205, 0x20, "20.5"},    // биты типа датчика не влияют
+		{205, 0x80, "20.5"},    // бит батареи не влияет
+		{0xFB, 0x0F, "-0.5"},   // 0xFFB = -5
+		{0xFF, 0x0F, "-0.1"},   // 0xFFF = -1
+		{0x9C, 0x0F, "-10.0"},  // 0xF9C = -100
+		{0x5F, 0x0F, "-16.1"},  // 0xF5F = -161
+		{0x5F, 0xAF, "-16.1"},  // тип датчика и батарея не влияют
+		{0xFF, 0x07, "204.7"},  // 0x7FF - максимум
+		{0x00, 0x08, "-204.8"}, // 0x800 - минимум
+	}
+
+	for _, c := range table {
+		assert.Equal(c.expected, formatTemperature(c.d0, c.d1), "D0=%#x D1=%#x", c.d0, c.d1)
+	}
+}
