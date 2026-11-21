@@ -8,6 +8,21 @@ import (
 	"time"
 )
 
+func TestConnectionBaudRate(t *testing.T) {
+	for _, baud := range []uint{9600, 115200} {
+		c := ConnectWithBaudRate("127.0.0.1:0", baud)
+		c.Close()
+		if c.baudRate != baud {
+			t.Fatalf("baudRate = %d, want %d", c.baudRate, baud)
+		}
+	}
+	c := Connect("127.0.0.1:0")
+	c.Close()
+	if c.baudRate != 9600 {
+		t.Fatalf("default baudRate = %d, want 9600", c.baudRate)
+	}
+}
+
 // После обрыва соединения со стороны модуля Connection должен
 // переподключиться сам, не дожидаясь отправки следующей команды
 func TestReconnectWithoutSend(t *testing.T) {

@@ -17,6 +17,7 @@ type Connection struct {
 	exit      chan struct{}
 	exitOnce  sync.Once
 	addr      string
+	baudRate  uint
 	sendQueue chan *Request
 	recvQueue chan *Response
 	recvEvent *Event
@@ -28,8 +29,15 @@ type Connection struct {
 
 // Connect подключается к модулю (локальному девайсу или tcp)
 func Connect(addr string) *Connection {
+	return ConnectWithBaudRate(addr, 9600)
+}
+
+// ConnectWithBaudRate подключается к модулю с заданной скоростью UART.
+// Для TCP-соединений baudRate не используется.
+func ConnectWithBaudRate(addr string, baudRate uint) *Connection {
 	c := &Connection{
 		addr:      addr,
+		baudRate:  baudRate,
 		exit:      make(chan struct{}),
 		sendQueue: make(chan *Request, 64),
 		recvQueue: make(chan *Response, 64),
@@ -74,7 +82,7 @@ func (c *Connection) connectTCP() io.ReadWriteCloser {
 func (c *Connection) connectSerial() io.ReadWriteCloser {
 	options := serial.OpenOptions{
 		PortName:        c.addr,
-		BaudRate:        9600,
+		BaudRate:        c.baudRate,
 		DataBits:        8,
 		StopBits:        1,
 		MinimumReadSize: 17,

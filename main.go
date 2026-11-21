@@ -14,6 +14,7 @@ func onMessage(topic string, payload []byte) {
 
 func main() {
 	port := flag.String("port", "/dev/ttyAMA0", "Serial port")
+	baud := flag.Uint("baud", 9600, "Serial port baud rate (ignored for TCP connections)")
 	broker := flag.String("server", "127.0.0.1:1883", "MQTT broker")
 	topic := flag.String("topic", "noolite2mqtt", "MQTT root topic")
 	mqttClientID := flag.String("client", "noolite2mqtt", "MQTT client ID")
@@ -23,7 +24,10 @@ func main() {
 
 	flag.Parse()
 
-	device := mtrf.Connect(*port)
+	if *baud == 0 {
+		log.Fatal("baud rate must be greater than zero")
+	}
+	device := mtrf.ConnectWithBaudRate(*port, *baud)
 
 	h, err := hub.New(device, hub.Options{
 		Broker:   *broker,
